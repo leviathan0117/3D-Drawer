@@ -1,0 +1,180 @@
+#if  defined (__STRICT_ANSI__)                   // Try to extend strict ANSI rules
+
+    #ifdef __GNUC__
+    #warning TXLib.h: Trying to extend strict ANSI compatibility
+    #endif
+
+    #undef  __STRICT_ANSI__
+    #define __STRICT_ANSI__UNDEFINED
+
+    #if defined (_STRING_H_) || defined (_INC_STRING) || defined (_STDIO_H_) || defined (_INC_STDIO)
+
+    #ifdef __GNUC__
+    #error
+    #error --------------------------------------------------------------------------------------------------------
+    #endif
+    #error TXLib.h: Should include "TXLib.h" BEFORE <string.h> or <stdio.h> in Strict ANSI mode.
+    #error
+    #error REARRANGE your #include directives, or DISABLE ANSI-compliancy.
+    #error --------------------------------------------------------------------------------------------------------
+    #error
+
+    #endif
+
+#endif
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <fstream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/core/cuda.hpp>
+#include "../libraries/EXLib.h"
+
+using namespace std;
+using namespace cv;
+
+VideoCapture capture;
+Mat frame;
+
+int ignoremouse = 1;
+int cut_x1 = -1, cut_y1 = -1, cut_x2 = -1, cut_y2 = -1;
+bool state = true;
+
+void my_mouse_callback( int event, int x, int y, int flags, void* param ) {
+    if(event == CV_EVENT_LBUTTONDOWN && !ignoremouse)
+    {
+        if (state)
+        {
+            state = !state;
+            cut_x1 = x;
+            cut_y1 = y;
+        } else
+        {
+            state = !state;
+            cut_x2 = x;
+            cut_y2 = y;
+        }
+    }
+}
+
+int main()
+{
+    if (capture.open(0) == false)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    capture.set(CAP_PROP_FRAME_WIDTH,  1280);
+    capture.set(CAP_PROP_FRAME_HEIGHT, 720);
+    capture.set(CAP_PROP_FPS,          60);
+
+    Mat frame;
+
+    int counter = -1;
+    cout << "Please enter start num:";
+    cin >> counter;
+    int mode = 0;
+    cout << "Cut images?(enter 1/0):";
+    cin >> mode;
+    if (!(counter >= 0 && counter <= 10000))
+    {
+        counter = -1;
+    }
+
+
+    char filename[512];
+
+    char key;
+
+    cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE);
+    if (mode)
+    {
+        setMouseCallback("Camera", my_mouse_callback);
+    }
+
+    fstream out;
+    out.open("./bad/bad.txt");
+    if (mode)
+    {
+        out.open("./good/good.txt", ios::out);
+    }
+
+    while(true)
+    {
+        key = waitKey(10);
+        if (capture.read(frame) == false)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        imshow("Camera", frame);
+
+        if (key == 27)
+        {
+            out.close();
+            return 0;
+        } else if(key == 's' && counter != -1)
+        {
+            Mat tmp = frame.clone();
+            if (mode)
+            {
+                cout << "image num -" << counter << "- image cutting\n";
+                ignoremouse = 0;
+                cut_x1 = -1;
+                cut_y1 = -1;
+                cut_x2 = -1;
+                cut_y2 = -1;
+                state = true;
+
+                while (true)
+                {
+                    key = waitKey(1);
+                    tmp = frame.clone();
+                    if (cut_x1 != -1 && cut_x2 != -1)
+                    {
+                        line(tmp, Point(cut_x1, cut_y1), Point(cut_x2, cut_y1), Scalar(255, 0, 0), 4, LINE_8);
+                        line(tmp, Point(cut_x1, cut_y2), Point(cut_x2, cut_y2), Scalar(255, 0, 0), 4, LINE_8);
+                        line(tmp, Point(cut_x1, cut_y1), Point(cut_x1, cut_y2), Scalar(255, 0, 0), 4, LINE_8);
+                        line(tmp, Point(cut_x2, cut_y1), Point(cut_x2, cut_y2), Scalar(255, 0, 0), 4, LINE_8);
+                    }
+                    if (cut_x1 != -1)
+                    {
+                        rectangle(tmp, Point(cut_x1 - 2, cut_y1 - 2), Point(cut_x1 + 2, cut_y1 + 2), Scalar(0, 255, 0), FILLED, LINE_8 );
+                    }
+                    if (cut_x2 != -1)
+                    {
+                        rectangle(tmp, Point(cut_x2 - 2, cut_y2 - 2), Point(cut_x2 + 2, cut_y2 + 2), Scalar(0, 0, 255), FILLED, LINE_8 );
+                    }
+                    imshow("Camera", tmp);
+                    if (key == 's')
+                    {
+                        break;
+                    }
+                    if (key == 27)
+                    {
+                        out.close();
+                        return 0;
+                    }
+                }
+                ignoremouse = 1;
+
+                Rect r(cut_x1, cut_y1, cut_x2 - cut_x1, cut_y2 - cut_y1);
+                tmp = frame(r);
+                sprintf(filename, "./good/%d.png", counter);
+                out << cut_x1 << " " << cut_y1 << " 1 0 0 " << cut_x2 - cut_x1 << cut_y2 - cut_y1 << "\n";
+            } else
+            {
+                sprintf(filename, "./bad/%d.png", counter);
+            }
+
+
+            cout << "Saved image -" << counter << "- to: " << filename << "\n";
+            imwrite(filename, tmp);
+            counter++;
+        }
+    }
+}
+

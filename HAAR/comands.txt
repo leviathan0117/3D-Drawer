@@ -1,0 +1,9 @@
+opencv_createsamples -vec C:\Users\root\Desktop\LBP\positiveauto\2.vec -img C:\Users\root\Desktop\LBP\good\3.jpg -num 2000 -show -w 50 -h 50
+opencv_traincascade.exe -data C:\Users\root\Desktop\LBP\output -vec C:\Users\root\Desktop\LBP\positiveauto\2.vec -bg C:\Users\root\Desktop\LBP\bad.dat -numStages 16 -minhitrate 0.999 -maxFalseAlarmRate 0.001 -numPos 1000 -numNeg 400 -w 50 -h 50 -mode ALL -precalcValBufSize 3500 -precalcIdxBufSize 3500 -numThreads 4
+
+opencv_createsamples -info good\good.txt -vec good\good.vec -show -w 50 -h 50
+opencv_traincascade -data output -vec good\good.vec  -precalcValBufSize 1024 -precalcIdxBufSize 1024 -numThreads 4 -numPos 39 -bg ./bad\bad.txt -numNeg 55 -w 50 -h 50 -maxFalseAlarmRate 0.1 -minHitRate 0.995 -numStages 12
+
+
+./opencv_traincascade -data output -vec good/good.vec  -precalcValBufSize 1024 -precalcIdxBufSize 1024 -numThreads 8 -numPos 20 -bg ./bad/bad.txt -numNeg 55 -w 50 -h 50 -maxFalseAlarmRate 0.1 -minHitRate 0.995 -numStages 12
+opencv_createsamples -info good/good.txt -vec good/good.vec -show -w 50 -h 50

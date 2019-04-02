@@ -1,0 +1,1 @@
+../../opencv_traincascade -data . -vec ../../good/good.vec  -precalcValBufSize 1000 -precalcIdxBufSize 1000 -numThreads 8 -numPos 70 -bg ../../bad_not_my/bad.txt -numNeg 2000 -w 50 -h 50 -maxFalseAlarmRate 0.1 -minHitRate 1 -numStages 6 -featureType HAAR -mod
