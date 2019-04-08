@@ -237,7 +237,7 @@ int main( int argc, char** argv )
     bool visualization = parser.get< bool >( "v" );
     bool flip_samples = parser.get< bool >( "f" );
     neg_dir = "/root/3D-Drawer/HAAR/bad_not_my";
-    pos_dir = "/root/hog/good";
+    pos_dir = "/root/3D-Drawer/hog/good";
     detector_height = 200;
     detector_width = 200;
 
