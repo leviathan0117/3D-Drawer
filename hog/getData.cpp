@@ -7,14 +7,7 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <GL/glut.h>
-#include <fstream>
-#include <stdlib.h>
-#include <math.h>
-#include <algorithm>
-#include <iostream>
-#include <thread>
-#include <numeric>
-#include <iomanip>
+#include <bits/stdc++.h>
 
 using namespace std;
 using namespace cv;
@@ -48,7 +41,7 @@ public:
     {
         hog.load("detector.yml");
     }
-    Rect detect(InputArray img)
+    vector <pair<Rect, double> > detect(InputArray img)
     {
         vector<Rect> found;
         vector<double> values;
@@ -60,24 +53,14 @@ public:
             hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 2, false);
         }
 
-        if (values.size() == 0)
+        vector <pair<Rect, double> > out;
+
+        for (int i = 0; i < found.size(); i++)
         {
-            return Rect(-1, -1, -1, -1);
+            out.push_back(pair <Rect, double> (found[i], values[i]));
         }
 
-        double max_value = -1;
-        double max_i = 0;
-        for (int i = 0; i < values.size(); i++)
-        {
-            if (values[i] > max_value)
-            {
-                max_value = values[i];
-                max_i = i;
-            }
-
-        }
-
-        return found[max_i];
+        return out;
     }
     void adjustRect(Rect & r) const
     {
@@ -192,33 +175,47 @@ int main()
             counter++;
         }
 
+
+        vector <pair<Rect, double> > found;
+
         int64 t = getTickCount();
-
-        Rect found = detector.detect(frame);
-
+        found = detector.detect(frame);
         t = getTickCount() - t;
 
-        // show the window
+        double max_value = -1;
+        double max_i = 0;
+        for (int i = 0; i < found.size(); i++)
         {
-            ostringstream buf;
-            buf << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t);
-            putText(frame, buf.str(), Point(10, 30), FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255), 2, LINE_AA);
+            if (found[i].second > max_value)
+            {
+                max_value = found[i].second;
+                max_i = i;
+            }
         }
 
-        if (found.x != -1)
+        if (max_value != -1)
         {
-            Rect &r = found;
+            Rect r = found[max_i].first;
+            Rect r2 = r;
             if (image_resize_to_cascade)
             {
                 detector.adjustRect(r);
             }
-            Rect r2 = r;
             r2.x += r2.width / 4;
             r2.y += r2.height / 4;
             r2.width *= 0.5;
             r2.height *= 0.5;
             rectangle(frame, r.tl(), r.br(), cv::Scalar(0, 255, 0), 2);
             rectangle(frame, r2.tl(), r2.br(), cv::Scalar(0, 0, 255), 2);
+        }
+
+
+
+        // show the window
+        {
+            ostringstream buf;
+            buf << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t);
+            putText(frame, buf.str(), Point(10, 30), FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255), 2, LINE_AA);
         }
 
 

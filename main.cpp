@@ -7,13 +7,8 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <GL/glut.h>
-#include <fstream>
-#include <stdlib.h>
-#include <math.h>
-#include <algorithm>
-#include <iostream>
-#include <thread>
-#include <numeric>
+#include <bits/stdc++.h>
+
 
 using namespace cv;
 using namespace std;
@@ -60,6 +55,7 @@ int it = 0;
 vector <int> detect_time(10, 0);
 bool state = 0;
 bool detect_active = 1;
+bool image_resize_to_cascade = false;
 
 //===============================================================
 
@@ -92,6 +88,47 @@ void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2);
 void mouseMove(int mouse_x_now, int mouse_y_now);
 void mouseButton(int button, int state, int mouse_x_now, int mouse_y_now);
 void launchGLUT();
+
+class Detector
+{
+    HOGDescriptor hog;
+public:
+    Detector() : hog()
+    {
+        hog.load("detector.yml");
+    }
+    vector <pair<Rect, double> > detect(InputArray img)
+    {
+        vector<Rect> found;
+        vector<double> values;
+        if (image_resize_to_cascade)
+        {
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 2, false);
+        } else
+        {
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 2, false);
+        }
+
+        vector <pair<Rect, double> > out;
+
+        for (int i = 0; i < found.size(); i++)
+        {
+            out.push_back(pair <Rect, double> (found[i], values[i]));
+        }
+
+        return out;
+    }
+    void adjustRect(Rect & r) const
+    {
+        // The HOG detector returns slightly larger rectangles than the real objects,
+        // so we slightly shrink the rectangles to get a nicer output.
+        // this is because of image resize to 1.05 in detectMultiScale
+        r.x += cvRound(r.width * 0.1);
+        r.width = cvRound(r.width * 0.8);
+        r.y += cvRound(r.height * 0.07);
+        r.height = cvRound(r.height * 0.8);
+    }
+};
 
 static Scalar randomColor(RNG& rng)
 {
@@ -611,14 +648,6 @@ int cam2_finish = 0;
 
 void imageProssesing()
 {
-    CascadeClassifier cascade;
-    String cascade_name = "HAAR/ready_cascades/gen1.0/cascade_costume_500-3.xml";
-    //String cascade_name = "HAAR/ready_cascades/gen1.2/cascade.xml";
-    if( !cascade.load(cascade_name) )
-    {
-        cout << "Error loading face cascade from: " << cascade_name;
-        exit(EXIT_FAILURE);
-    };
     if (camera_capture1.open(2) == false)
     {
         exit(EXIT_FAILURE);
@@ -627,6 +656,8 @@ void imageProssesing()
     {
         exit(EXIT_FAILURE);
     }
+
+    Detector detector;
 
     camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
     camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
@@ -661,19 +692,51 @@ void imageProssesing()
 
         if (detect_active)
         {
-			vector<Rect> faces;
-			cascade.detectMultiScale(frame_gray, faces);
-			for (auto i = 0; i < faces.size(); i++)
+			vector <pair<Rect, double> > found;
+
+			int64 t = getTickCount();
+			found = detector.detect(frame);
+			t = getTickCount() - t;
+
+			double max_value = -1;
+			double max_i = 0;
+			for (int i = 0; i < found.size(); i++)
 			{
-				Point center(faces[i].x + faces[i].width / 2, faces[i].y + faces[i].height / 2);
-				ellipse(frame, center, Size(faces[i].width / 2, faces[i].height / 2), 0, 0, 360, Scalar(255, 0, 255), 4);
+				if (found[i].second > max_value)
+				{
+					max_value = found[i].second;
+					max_i = i;
+				}
 			}
-			if (faces.size() > 0)
+
+			if (max_value != -1)
 			{
+				Rect r = found[max_i].first;
+				Rect r2 = r;
+				if (image_resize_to_cascade)
+				{
+					detector.adjustRect(r);
+				}
+				r2.x += r2.width / 4;
+				r2.y += r2.height / 4;
+				r2.width *= 0.5;
+				r2.height *= 0.5;
+				rectangle(frame, r.tl(), r.br(), cv::Scalar(0, 255, 0), 2);
+				rectangle(frame, r2.tl(), r2.br(), cv::Scalar(0, 0, 255), 2);
+
 				detect_time[it] = 1;
 			} else
 			{
 				detect_time[it] = 0;
+			}
+
+
+
+			// show the window
+			{
+				ostringstream buf;
+				buf << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t);
+				putText(frame, buf.str(), Point(10, 30), FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255), 2, LINE_AA);
 			}
 			it++;
 			it %= 10;

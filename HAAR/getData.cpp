@@ -168,7 +168,7 @@ int main()
                 out << counter << ".png 1 0 0 " << cut_x2 - cut_x1 << " " << cut_y2 - cut_y1 << "\n";
             } else
             {
-                sprintf(filename, "./bad/%d.png", counter);
+                sprintf(filename, "./bad_not_my/%d.png", counter);
                 out << counter << ".png\n";
             }
 
