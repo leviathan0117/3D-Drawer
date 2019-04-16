@@ -71,8 +71,14 @@ void load_images( const String & dirname, vector< Mat > & img_lst, bool showImag
     vector< String > files;
     glob( dirname, files );
 
+    cout << "\n";
+
     for ( size_t i = 0; i < files.size(); ++i )
     {
+	if (i % 100 == 0)
+	{
+	    cout << i << " out of " << files.size() << "\n";
+	}
         Mat img = imread( files[i] ); // load the image
         if ( img.empty() )            // invalid image, skip it.
         {
