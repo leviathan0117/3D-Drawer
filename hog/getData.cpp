@@ -47,10 +47,10 @@ public:
         vector<double> values;
         if (image_resize_to_cascade)
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 10, false);
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 15, false);
         } else
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 10, false);
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 15, false);
         }
 
         vector <pair<Rect, double> > out;
