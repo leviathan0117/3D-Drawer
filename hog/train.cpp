@@ -10,6 +10,8 @@ using namespace cv;
 using namespace cv::ml;
 using namespace std;
 
+fstream out;
+
 vector< float > get_svm_detector( const Ptr< SVM >& svm )
 {
     // get the support vectors
@@ -199,6 +201,8 @@ void computeHOGs( const Size wsize, const vector< Mat > & img_lst, vector< Mat >
 
 int main( int argc, char** argv )
 {
+    out.open("files.txt", ios::out);
+
     const char* keys =
     {
         "{help h|     | show help message}"
