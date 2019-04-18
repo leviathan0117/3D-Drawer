@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <time.h>
+#include <fstream>
 
 using namespace cv;
 using namespace cv::ml;
@@ -116,6 +117,7 @@ void do_stuff_for_neg( const String & dirname, Size size, vector< Mat > & gradie
         } else
         {
             cout << files[i] << "   !!has wrong size" << "\n";
+            out << files[i] << " ";
             continue;
         }
 
@@ -334,6 +336,8 @@ int main( int argc, char** argv )
     hog.winSize = pos_image_size;
     hog.setSVMDetector( get_svm_detector( svm ) );
     hog.save( obj_det_filename );
+
+    out.close();
 
     return 0;
 }
