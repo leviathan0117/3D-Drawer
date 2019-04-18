@@ -11,8 +11,6 @@ using namespace cv;
 using namespace cv::ml;
 using namespace std;
 
-fstream out;
-
 vector< float > get_svm_detector( const Ptr< SVM >& svm )
 {
     // get the support vectors
@@ -117,7 +115,6 @@ void do_stuff_for_neg( const String & dirname, Size size, vector< Mat > & gradie
         } else
         {
             cout << files[i] << "   !!has wrong size" << "\n";
-            out << files[i] << " ";
             continue;
         }
 
@@ -203,8 +200,6 @@ void computeHOGs( const Size wsize, const vector< Mat > & img_lst, vector< Mat >
 
 int main( int argc, char** argv )
 {
-    out.open("files.txt", ios::out);
-
     const char* keys =
     {
         "{help h|     | show help message}"
@@ -336,8 +331,6 @@ int main( int argc, char** argv )
     hog.winSize = pos_image_size;
     hog.setSVMDetector( get_svm_detector( svm ) );
     hog.save( obj_det_filename );
-
-    out.close();
 
     return 0;
 }
