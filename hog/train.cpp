@@ -235,7 +235,7 @@ int main( int argc, char** argv )
     bool train_twice = parser.get< bool >( "d" );
     bool visualization = parser.get< bool >( "v" );
     bool flip_samples = parser.get< bool >( "f" );
-    flip_samples = true;
+    flip_samples = false;
     neg_dir = "/root/3D-Drawer/HAAR/bad_not_my";
     //neg_dir = "/root/3D-Drawer/HAAR/bad";
     pos_dir = "/root/3D-Drawer/hog/good";
@@ -285,7 +285,8 @@ int main( int argc, char** argv )
     }
 
     clog << "Histogram of Gradients are being calculated for positive images...";
-    computeHOGs( pos_image_size, pos_lst, gradient_lst, flip_samples );
+    //computeHOGs( pos_image_size, pos_lst, gradient_lst, flip_samples );
+    computeHOGs( pos_image_size, pos_lst, gradient_lst, false );
     size_t positive_count = gradient_lst.size();
     labels.assign( positive_count, +1 );
     clog << "\n...[done] ( positive count : " << positive_count << " )" << endl;
