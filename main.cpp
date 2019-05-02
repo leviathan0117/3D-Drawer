@@ -15,11 +15,6 @@ using namespace std;
 
 fstream in, out;
 
-VideoCapture camera_capture1;
-VideoCapture camera_capture2;
-Mat frame;
-Mat frame2;
-
 //stand_green
 int h1 = 40;
 int s1 = 79;
@@ -54,7 +49,7 @@ int show_camera_windows = 1;
 int it = 0;
 vector <int> detect_time(10, 0);
 bool state = 0;
-bool detect_active = 1;
+bool detect_active = true;
 bool image_resize_to_cascade = false;
 
 //===============================================================
@@ -95,7 +90,7 @@ class Detector
 public:
     Detector() : hog()
     {
-        hog.load("detector.yml");
+        hog.load("hog/detector.yml");
     }
     vector <pair<Rect, double> > detect(InputArray img)
     {
@@ -130,216 +125,141 @@ public:
     }
 };
 
-static Scalar randomColor(RNG& rng)
+static Scalar randomColor(RNG rng)
 {
     int icolor = (unsigned)rng;
     return Scalar(icolor&255, (icolor>>8)&255, (icolor>>16)&255);
 }
 
+
+/*
+
+boldness = [1, 9]
+*/
+void draw_button(Mat &image, int X, int Y, string text, int size)
+{
+	int lineType = LINE_AA;
+	Point back_rectangle[1][4];
+		back_rectangle[0][0]  = Point(X, Y + 5);
+		back_rectangle[0][1]  = Point(X, Y - size * 22);
+		back_rectangle[0][2]  = Point(X + text.size() * size * 18.75, Y - size * 22);
+		back_rectangle[0][3]  = Point(X + text.size() * size * 18.75, Y + 5);
+		const Point* ppt[1] = { back_rectangle[0] };
+		int npt[] = { 4 };
+		fillPoly(image, ppt, npt, 1, Scalar(0, 255, 0), lineType );
+		putText(image, text, Point(X, Y), 0, size, Scalar(0, 0, 255), size, lineType, false);
+	rectangle(image, Point(X, Y + 5), Point(X + text.size() * size * 18.75, Y - size * 22), Scalar(255, 0, 0), size, lineType);
+
+}
+class button
+{
+    int X, Y;
+    string text;
+    double size;
+    int lineType;
+    int rect_len;
+
+public:
+    button(int x_in = 0, int y_in = 0, string text_in = "NO_TEXT!", double size_in = 2.5, int lineType_in = LINE_AA, int rect_len_in = 100)
+    {
+        X = x_in;
+        Y = y_in;
+		text = text_in;
+		size = size_in;
+		lineType = lineType_in;
+		rect_len = rect_len_in;
+    };
+    void draw(Mat &image)
+    {
+		Point back_rectangle[1][4];
+		back_rectangle[0][0]  = Point(X, Y + 25);
+		back_rectangle[0][1]  = Point(X, Y - size * 22 - 5);
+		back_rectangle[0][2]  = Point(X + rect_len, Y - size * 22 - 5);
+		back_rectangle[0][3]  = Point(X + rect_len, Y + 25);
+		const Point* ppt[1] = { back_rectangle[0] };
+		int npt[] = { 4 };
+		fillPoly(image, ppt, npt, 1, Scalar(0, 255, 0), lineType );
+		putText(image, text, Point(X, Y), 0, size, Scalar(0, 0, 255), size, lineType, false);
+		rectangle(image, Point(X, Y + 25), Point(X + rect_len, Y - size * 22 - 5), Scalar(255, 0, 0), size, lineType);
+    }
+    int is_pressed(int x_in, int y_in)
+    {
+		if (X <= x_in && x_in <= X + rect_len)
+		{
+			if (Y - size * 22 - 5 <= y_in && y_in <= Y + 25)
+			{
+				return 1;
+			}
+		}
+		return 0;
+    }
+};
+
+int mouse_state = 0;
+int mouse_x = 0, mouse_y = 0;
+
+void mouse_handle( int event_in, int x_in, int y_in, int, void*)
+{
+    if(mouse_state)
+    {
+		mouse_x = x_in;
+		mouse_y = y_in;
+    }
+
+    cout << mouse_x << " " << mouse_y << " --- " << mouse_state << "\n";
+    switch(event_in)
+    {
+    case EVENT_LBUTTONDOWN:
+		mouse_state = 1;
+        break;
+    case EVENT_LBUTTONUP:
+		mouse_state = 0;
+        break;
+    }
+}
+
+
 int main(int argc, char **argv)
 {
-	/*char wndname[] = "3Δ Drawer";
+	char wndname[] = "3Δ Drawer";
     const int NUMBER = 100;
     const int DELAY = 5;
     int lineType = LINE_AA; // change it to LINE_8 to see non-antialiased graphics
     int i, width = 1280, height = 720;
-    int x1 = -width/2, x2 = width*3/2, y1 = -height/2, y2 = height*3/2;
+    int x1 = -width/2, x2 = width * 3 / 2, y1 = -height/2, y2 = height*3/2;
     RNG rng(0xFFFFFFFF);
 
     Mat image = Mat::zeros(height, width, CV_8UC3);
-    imshow(wndname, image);
+    //imshow(wndname, image);
     waitKey(DELAY);
 
     char key = ' ';
 
+    button b1(width / 2, 100, "Create new file", 2.5, LINE_AA, 600);
+    button b2(width / 2, 200, "Open file", 2.5, LINE_AA, 600);
+
+    namedWindow(wndname);
+    setMouseCallback(wndname, mouse_handle);
+
     while (key != 27)
     {
-		Point pt[2][3];
-        pt[0][0].x = rng.uniform(x1, x2);
-        pt[0][0].y = rng.uniform(y1, y2);
-        pt[0][1].x = rng.uniform(x1, x2);
-        pt[0][1].y = rng.uniform(y1, y2);
-        pt[0][2].x = rng.uniform(x1, x2);
-        pt[0][2].y = rng.uniform(y1, y2);
-        pt[1][0].x = rng.uniform(x1, x2);
-        pt[1][0].y = rng.uniform(y1, y2);
-        pt[1][1].x = rng.uniform(x1, x2);
-        pt[1][1].y = rng.uniform(y1, y2);
-        pt[1][2].x = rng.uniform(x1, x2);
-        pt[1][2].y = rng.uniform(y1, y2);
-        const Point* ppt[2] = {pt[0], pt[1]};
-        int npt[] = {3, 3};
+		b1.draw(image);
+		b2.draw(image);
 
-        fillPoly(image, ppt, npt, 2, randomColor(rng), lineType);
+        if (b1.is_pressed(mouse_x, mouse_y) && mouse_state)
+        {
+			break;
+        }
 
         imshow(wndname, image);
 		key = waitKey(DELAY);
     }
+    if (key == 27)
+    {
+		exit(0);
+    }
     waitKey(100);
     destroyAllWindows();
-
-    /*for (i = 0; i < NUMBER * 2; i++)
-    {
-        Point pt1, pt2;
-        pt1.x = rng.uniform(x1, x2);
-        pt1.y = rng.uniform(y1, y2);
-        pt2.x = rng.uniform(x1, x2);
-        pt2.y = rng.uniform(y1, y2);
-
-        int arrowed = rng.uniform(0, 6);
-
-        if( arrowed < 3 )
-            line( image, pt1, pt2, randomColor(rng), rng.uniform(1,10), lineType );
-        else
-            arrowedLine(image, pt1, pt2, randomColor(rng), rng.uniform(1, 10), lineType);
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 0; i < NUMBER * 2; i++)
-    {
-        Point pt1, pt2;
-        pt1.x = rng.uniform(x1, x2);
-        pt1.y = rng.uniform(y1, y2);
-        pt2.x = rng.uniform(x1, x2);
-        pt2.y = rng.uniform(y1, y2);
-        int thickness = rng.uniform(-3, 10);
-        int marker = rng.uniform(0, 10);
-        int marker_size = rng.uniform(30, 80);
-
-        if (marker > 5)
-            rectangle(image, pt1, pt2, randomColor(rng), MAX(thickness, -1), lineType);
-        else
-            drawMarker(image, pt1, randomColor(rng), marker, marker_size );
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 0; i < NUMBER; i++)
-    {
-        Point center;
-        center.x = rng.uniform(x1, x2);
-        center.y = rng.uniform(y1, y2);
-        Size axes;
-        axes.width = rng.uniform(0, 200);
-        axes.height = rng.uniform(0, 200);
-        double angle = rng.uniform(0, 180);
-
-        ellipse( image, center, axes, angle, angle - 100, angle + 200,
-                 randomColor(rng), rng.uniform(-1,9), lineType );
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 0; i< NUMBER; i++)
-    {
-        Point pt[2][3];
-        pt[0][0].x = rng.uniform(x1, x2);
-        pt[0][0].y = rng.uniform(y1, y2);
-        pt[0][1].x = rng.uniform(x1, x2);
-        pt[0][1].y = rng.uniform(y1, y2);
-        pt[0][2].x = rng.uniform(x1, x2);
-        pt[0][2].y = rng.uniform(y1, y2);
-        pt[1][0].x = rng.uniform(x1, x2);
-        pt[1][0].y = rng.uniform(y1, y2);
-        pt[1][1].x = rng.uniform(x1, x2);
-        pt[1][1].y = rng.uniform(y1, y2);
-        pt[1][2].x = rng.uniform(x1, x2);
-        pt[1][2].y = rng.uniform(y1, y2);
-        const Point* ppt[2] = {pt[0], pt[1]};
-        int npt[] = {3, 3};
-
-        polylines(image, ppt, npt, 2, true, randomColor(rng), rng.uniform(1,10), lineType);
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 0; i< NUMBER; i++)
-    {
-        Point pt[2][3];
-        pt[0][0].x = rng.uniform(x1, x2);
-        pt[0][0].y = rng.uniform(y1, y2);
-        pt[0][1].x = rng.uniform(x1, x2);
-        pt[0][1].y = rng.uniform(y1, y2);
-        pt[0][2].x = rng.uniform(x1, x2);
-        pt[0][2].y = rng.uniform(y1, y2);
-        pt[1][0].x = rng.uniform(x1, x2);
-        pt[1][0].y = rng.uniform(y1, y2);
-        pt[1][1].x = rng.uniform(x1, x2);
-        pt[1][1].y = rng.uniform(y1, y2);
-        pt[1][2].x = rng.uniform(x1, x2);
-        pt[1][2].y = rng.uniform(y1, y2);
-        const Point* ppt[2] = {pt[0], pt[1]};
-        int npt[] = {3, 3};
-
-        fillPoly(image, ppt, npt, 2, randomColor(rng), lineType);
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 0; i < NUMBER; i++)
-    {
-        Point center;
-        center.x = rng.uniform(x1, x2);
-        center.y = rng.uniform(y1, y2);
-
-        circle(image, center, rng.uniform(0, 300), randomColor(rng),
-               rng.uniform(-1, 9), lineType);
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    for (i = 1; i < NUMBER; i++)
-    {
-        Point org;
-        org.x = rng.uniform(x1, x2);
-        org.y = rng.uniform(y1, y2);
-
-        putText(image, "Testing text rendering", org, rng.uniform(0,8),
-                rng.uniform(0,100)*0.05+0.1, randomColor(rng), rng.uniform(1, 10), lineType);
-
-        imshow(wndname, image);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-
-    Size textsize = getTextSize("3D Drawer forever!", FONT_HERSHEY_COMPLEX, 3, 5, 0);
-    Point org((width - textsize.width)/2, (height - textsize.height)/2);
-
-    Mat image2;
-    for( i = 0; i < 255; i += 2 )
-    {
-        image2 = image - Scalar::all(i);
-        putText(image2, "3D Drawer forever!", org, FONT_HERSHEY_COMPLEX, 3,
-                Scalar(i, i, 255), 5, lineType);
-
-        imshow(wndname, image2);
-        if(waitKey(DELAY) >= 0)
-            return 0;
-    }
-    waitKey();
-    destroyAllWindows();*/
-
-	//TMP!!!!!!!!
-	/*size = 2;
-	x_points[0] = -2;
-	y_points[0] = 12;
-	z_points[0] = -2;
-	x_points[1] = -1;
-	y_points[1] = 10;
-	z_points[1] = 3;*/
 
 	//TMP!!!!!!!!
 
@@ -648,6 +568,10 @@ int cam2_finish = 0;
 
 void imageProssesing()
 {
+    VideoCapture camera_capture1;
+	VideoCapture camera_capture2;
+	Mat frame;
+	Mat frame2;
     if (camera_capture1.open(2) == false)
     {
         exit(EXIT_FAILURE);
@@ -657,7 +581,6 @@ void imageProssesing()
         exit(EXIT_FAILURE);
     }
 
-    Detector detector;
 
     camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
     camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
@@ -666,6 +589,9 @@ void imageProssesing()
     camera_capture2.set(CAP_PROP_FRAME_WIDTH,  800);
     camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
     camera_capture2.set(CAP_PROP_FPS,          30);
+
+
+    Detector detector;
 	waitKey(100);
     while (true)
     {
@@ -686,9 +612,6 @@ void imageProssesing()
         {
             exit(EXIT_FAILURE);
         }
-
-        Mat frame_gray;
-        cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
 
         if (detect_active)
         {
@@ -759,6 +682,9 @@ void imageProssesing()
 			imshow("camera_capture1 - detection", frame);
         }
 
+
+        Mat frame_gray;
+        cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
         Mat source = frame.clone();
         //colour filter
         cvtColor(frame, frame, COLOR_BGR2HSV);

@@ -82,7 +82,7 @@ char opencv_window_key = 0;
 
 int main()
 {
-    if (capture.open(0) == false)
+    if (capture.open(2) == false)
     {
         exit(EXIT_FAILURE);
     }
