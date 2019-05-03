@@ -92,31 +92,56 @@ public:
     {
         hog.load("hog/detector.yml");
     }
-    vector <pair<Rect, double> > detect(InputArray img)
+    pair<int, int> detect(Mat input_img, Mat output_img, bool draw_detection)
     {
         vector<Rect> found;
         vector<double> values;
         if (image_resize_to_cascade)
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 2, false);
+            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 2, false);
         } else
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 2, false);
+            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 10, false);
         }
+        double max_value = -1;
+		double max_i = 0;
+		for (int i = 0; i < found.size(); i++)
+		{
+			if (values[i] > max_value)
+			{
+				max_value = values[i];
+				max_i = i;
+			}
+		}
 
-        vector <pair<Rect, double> > out;
+		pair <int, int> out (-1, -1);
 
-        for (int i = 0; i < found.size(); i++)
-        {
-            out.push_back(pair <Rect, double> (found[i], values[i]));
-        }
+		if (max_value != -1)
+		{
+			Rect r = found[max_i];
+			out.first = r.x;
+			out.second = r.y;
+			if (draw_detection)
+			{
+				Rect r2 = r;
+				if (image_resize_to_cascade)
+				{
+					adjustRect(r);
+				}
+				r2.x += r2.width / 4;
+				r2.y += r2.height / 4;
+				r2.width *= 0.5;
+				r2.height *= 0.5;
+				rectangle(output_img, r.tl(), r.br(), cv::Scalar(0, 255, 0), 2);
+				rectangle(output_img, r2.tl(), r2.br(), cv::Scalar(0, 0, 255), 2);
+			}
+		}
 
         return out;
+
     }
     void adjustRect(Rect & r) const
     {
-        // The HOG detector returns slightly larger rectangles than the real objects,
-        // so we slightly shrink the rectangles to get a nicer output.
         // this is because of image resize to 1.05 in detectMultiScale
         r.x += cvRound(r.width * 0.1);
         r.width = cvRound(r.width * 0.8);
@@ -276,6 +301,320 @@ int main(int argc, char **argv)
 	f2.join();
 
 	return 1;
+}
+
+
+Mat colorFilter(const Mat& src)
+{
+    assert(src.type() == CV_8UC3);
+
+    Mat filtered;
+    inRange(src, Scalar(h1, s1, v1), Scalar(h2, s2, v2), filtered);
+
+    return filtered;
+}
+
+int cam1_finish = 0;
+int cam2_finish = 0;
+
+void imageProssesing()
+{
+	//detect_active = false;//TMP!!
+    VideoCapture camera_capture1;
+	VideoCapture camera_capture2;
+	Mat frame1;
+	Mat frame2;
+    if (camera_capture1.open(2) == false)
+    {
+        exit(EXIT_FAILURE);
+    }
+    if (camera_capture2.open(4) == false)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+
+    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
+    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture1.set(CAP_PROP_FPS,          60);
+
+    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  800);
+    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture2.set(CAP_PROP_FPS,          60);
+
+
+    Detector detector;
+	waitKey(100);
+    while (true)
+    {
+        //printFPS();
+        opencv_window_key = waitKey(1);
+        //=============================================================================
+        //      CAMERA 1
+
+        if (camera_capture1.read(frame1) == false)
+        {
+            exit(EXIT_FAILURE);
+        }
+        if (camera_capture2.read(frame2) == false)
+        {
+            exit(EXIT_FAILURE);
+        }
+        /*if (camera_capture1.read(frame1) == false)
+        {
+            exit(EXIT_FAILURE);
+        }*/
+
+        if (detect_active)
+        {
+			Mat detect_frame = frame1;
+			pair <int, int> detection_cords;
+
+			int64 t = getTickCount();
+			detection_cords = detector.detect(frame1, detect_frame, true);
+			t = getTickCount() - t;
+
+			if (detection_cords.first != -1)
+			{
+				detect_time[it] = 1;
+			} else
+			{
+				detect_time[it] = 0;
+			}
+
+			// show the window
+			{
+				ostringstream buf;
+				buf << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t);
+				putText(detect_frame, buf.str(), Point(10, 30), FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255), 2, LINE_AA);
+			}
+
+			if (show_camera_windows)
+			{
+				imshow("camera_capture1 - detection", detect_frame);
+			}
+
+			it++;
+			it %= 10;
+        }
+
+		if (accumulate(detect_time.begin(), detect_time.end(), 0ll) > 8)
+		{
+			state = !state;
+			if (state)
+			{
+				x_points.push_back(vector <double> ());
+				y_points.push_back(vector <double> ());
+				z_points.push_back(vector <double> ());
+			}
+			fill(detect_time.begin(), detect_time.end(), 0);
+		}
+
+
+        Mat source = frame1.clone();
+        //colour filter
+        cvtColor(frame1, frame1, COLOR_BGR2HSV);
+        frame1 = colorFilter(frame1);
+
+        //detecting contours
+
+        vector<vector<Point> > contours;
+        Mat contourOutput = frame1.clone();
+        findContours( contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE );
+        Mat contourframe(frame1.size(), CV_8UC3, Scalar(0,0,0));
+        Scalar colors[3];
+        colors[2] = Scalar(255, 0, 0);
+        colors[1] = Scalar(0, 255, 0);
+        colors[0] = Scalar(0, 0, 255);
+
+        for (vector<vector<Point> >::iterator it = contours.begin(); it != contours.end(); )
+        {
+            if (it->size() < 50)
+            {
+                it = contours.erase(it);
+            } else
+            {
+                ++it;
+            }
+        }
+
+        float maxr1 = -1, maxr1i = 0;
+        Point2f point1;
+        float radius1;
+        for (int i = 0; i < contours.size(); i++)
+        {
+            minEnclosingCircle(contours[i], point1, radius1);
+            if (radius1 > maxr1)
+            {
+                maxr1 = radius1;
+                maxr1i = i;
+            }
+        }
+
+        if (contours.size() > 0)
+        {
+            drawContours(source, contours, maxr1i, Scalar(0, 0, 255), 3);
+            minEnclosingCircle(contours[maxr1i], point1, radius1);
+        }
+        if (show_camera_windows)
+        {
+			imshow("Camera1", source);
+        }
+
+        if (opencv_window_key == 'q')
+            h1++;
+        else if (opencv_window_key == 'a')
+            h1--;
+        else if (opencv_window_key == 'w')
+            s1++;
+        else if (opencv_window_key == 's')
+            s1--;
+        else if (opencv_window_key == 'e')
+            v1++;
+        else if (opencv_window_key == 'd')
+            v1--;
+        else if (opencv_window_key == 'r')
+            h2++;
+        else if (opencv_window_key == 'f')
+            h2--;
+        else if (opencv_window_key == 't')
+            s2++;
+        else if (opencv_window_key == 'g')
+            s2--;
+        else if (opencv_window_key == 'y')
+            v2++;
+        else if (opencv_window_key == 'h')
+            v2--;
+
+        //cout << h1 << " " << s1 << " " << v1 << " " << h2 << " " << s2 << " " << v2 << " --- ";
+
+
+        //=============================================================================
+        //      CAMERA 2
+
+        Mat source2 = frame2.clone();
+
+        //colour filter
+        cvtColor(frame2, frame2, COLOR_BGR2HSV);
+        frame2 = colorFilter(frame2);
+
+        //detecting contours
+
+        vector<vector<Point> > contours2;
+        Mat contourOutput2 = frame2.clone();
+        findContours( contourOutput2, contours2, CV_RETR_LIST, CV_CHAIN_APPROX_NONE );
+        Mat contourframe2(frame2.size(), CV_8UC3, Scalar(0,0,0));
+        Scalar colors2[3];
+        colors2[2] = Scalar(255, 0, 0);
+        colors2[1] = Scalar(0, 255, 0);
+        colors2[0] = Scalar(0, 0, 255);
+
+        for (vector<vector<Point> >::iterator it = contours2.begin(); it != contours2.end(); )
+        {
+            if (it->size() < 50)
+                it = contours2.erase(it);
+            else
+                ++it;
+        }
+
+        float maxr2 = -1, maxr2i = 0;
+        Point2f point2;
+        float radius2;
+        for (int i = 0; i < contours2.size(); i++)
+        {
+            minEnclosingCircle(contours2[i], point2, radius2);
+            if (radius2 > maxr2)
+            {
+                maxr2 = radius2;
+                maxr2i = i;
+            }
+        }
+        if (contours2.size() > 0)
+        {
+            drawContours(source2, contours2, maxr2i, Scalar(0, 0, 255), 3);
+            minEnclosingCircle(contours2[maxr2i], point2, radius2);
+        }
+        if (show_camera_windows)
+        {
+			imshow("Camera2", source2);
+        }
+
+
+        //=============================================================================
+        //      IMAGE PROSESSING
+
+        //cout << point1.x << endl << point1.y << endl << point2.x << endl << point2.y << "\n\n\n";
+
+        firstcamx=(point2.x - 400) / 40;
+        secondcamx=(point1.x - 400) / 40;
+        firstcamz=(300 - point1.y) / 40;
+        double kinda23 = 30.8724;
+        if (firstcamx != 0)
+        {
+            a = kinda23 / (firstcamx);
+        }
+        if (secondcamx != 0)
+        {
+            b = kinda23 / (secondcamx);
+        }
+        if (firstcamz != 0)
+        {
+            c = kinda23 / (firstcamz);
+        }
+
+        double x_fill, y_fill, z_fill;
+
+        if (firstcamx != 0 && secondcamx != 0 && firstcamz != 0)
+        {
+            x_fill = (a + b) / (a - b);
+            y_fill = (2 * a * b) / (a - b);
+            z_fill = y_fill / c;
+        }
+        if (firstcamz == 0 && firstcamx != 0 && secondcamx != 0)
+        {
+            x_fill = (a + b) / (a - b);
+            y_fill = (2 * a * b) / (a - b);
+            z_fill = 0;
+        }
+        if (firstcamx == 0 && firstcamz != 0)
+        {
+            x_fill = 1;
+            y_fill = 2 * b;
+            z_fill = y_fill / c;
+        }
+        if (secondcamx == 0 && firstcamz != 0)
+        {
+            x_fill = -1;
+            y_fill = -2 * a;
+            z_fill = y_fill / c;
+        }
+        if (firstcamx == 0 && firstcamz == 0)
+        {
+            x_fill = 1;
+            y_fill = 2 * b;
+            z_fill = 0;
+        }
+        if (secondcamx == 0 && firstcamz == 0)
+        {
+            x_fill = 1;
+            y_fill = -2 * a;
+            z_fill = 0;
+        }
+
+        if (y_fill <= 20 && x_fill <= 20 && z_fill <= 20 && x_fill >= -20 && y_fill >= -20 && contours.size() != 0 && contours2.size() != 0 && y_fill >= 0 && abs(point1.y - point2.y) < 100 && state == 1)
+        {
+			int line_it = x_points.size() - 1;
+			x_points[line_it].push_back(x_fill);
+			y_points[line_it].push_back(y_fill / 3);//HERE!!!!!!!!!!!!
+			z_points[line_it].push_back(z_fill);
+        }
+
+        //cout << x_points.size() << "\n";
+
+
+        printFPS();
+        //cout << x_fill << " " << y_fill << " " << z_fill << " --- " << state << "\n";
+    }
 }
 
 
@@ -551,342 +890,4 @@ void launchGLUT()
 	glEnable(GL_DEPTH_TEST);
 
 	glutMainLoop();
-}
-
-Mat colorFilter(const Mat& src)
-{
-    assert(src.type() == CV_8UC3);
-
-    Mat filtered;
-    inRange(src, Scalar(h1, s1, v1), Scalar(h2, s2, v2), filtered);
-
-    return filtered;
-}
-
-int cam1_finish = 0;
-int cam2_finish = 0;
-
-void imageProssesing()
-{
-    VideoCapture camera_capture1;
-	VideoCapture camera_capture2;
-	Mat frame;
-	Mat frame2;
-    if (camera_capture1.open(2) == false)
-    {
-        exit(EXIT_FAILURE);
-    }
-    if (camera_capture2.open(4) == false)
-    {
-        exit(EXIT_FAILURE);
-    }
-
-
-    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
-    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
-    camera_capture1.set(CAP_PROP_FPS,          30);
-
-    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  800);
-    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
-    camera_capture2.set(CAP_PROP_FPS,          30);
-
-
-    Detector detector;
-	waitKey(100);
-    while (true)
-    {
-        //printFPS();
-        opencv_window_key = waitKey(1);
-        //=============================================================================
-        //      CAMERA 1
-
-        if (camera_capture1.read(frame) == false)
-        {
-            exit(EXIT_FAILURE);
-        }
-        if (camera_capture2.read(frame2) == false)
-        {
-            exit(EXIT_FAILURE);
-        }
-        if (camera_capture1.read(frame) == false)
-        {
-            exit(EXIT_FAILURE);
-        }
-
-        if (detect_active)
-        {
-			vector <pair<Rect, double> > found;
-
-			int64 t = getTickCount();
-			found = detector.detect(frame);
-			t = getTickCount() - t;
-
-			double max_value = -1;
-			double max_i = 0;
-			for (int i = 0; i < found.size(); i++)
-			{
-				if (found[i].second > max_value)
-				{
-					max_value = found[i].second;
-					max_i = i;
-				}
-			}
-
-			if (max_value != -1)
-			{
-				Rect r = found[max_i].first;
-				Rect r2 = r;
-				if (image_resize_to_cascade)
-				{
-					detector.adjustRect(r);
-				}
-				r2.x += r2.width / 4;
-				r2.y += r2.height / 4;
-				r2.width *= 0.5;
-				r2.height *= 0.5;
-				rectangle(frame, r.tl(), r.br(), cv::Scalar(0, 255, 0), 2);
-				rectangle(frame, r2.tl(), r2.br(), cv::Scalar(0, 0, 255), 2);
-
-				detect_time[it] = 1;
-			} else
-			{
-				detect_time[it] = 0;
-			}
-
-
-
-			// show the window
-			{
-				ostringstream buf;
-				buf << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t);
-				putText(frame, buf.str(), Point(10, 30), FONT_HERSHEY_PLAIN, 2.0, Scalar(0, 0, 255), 2, LINE_AA);
-			}
-			it++;
-			it %= 10;
-        }
-
-		if (accumulate(detect_time.begin(), detect_time.end(), 0ll) > 8)
-		{
-			state = !state;
-			if (state)
-			{
-				x_points.push_back(vector <double> ());
-				y_points.push_back(vector <double> ());
-				z_points.push_back(vector <double> ());
-			}
-			fill(detect_time.begin(), detect_time.end(), 0);
-		}
-        //cout << faces.size() << " " << accumulate(detect_time.begin(), detect_time.end(), 0ll) << " " << state << "\n";
-        if (show_camera_windows)
-        {
-			imshow("camera_capture1 - detection", frame);
-        }
-
-
-        Mat frame_gray;
-        cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
-        Mat source = frame.clone();
-        //colour filter
-        cvtColor(frame, frame, COLOR_BGR2HSV);
-        frame = colorFilter(frame);
-
-        //detecting contours
-
-        vector<vector<Point> > contours;
-        Mat contourOutput = frame.clone();
-        findContours( contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE );
-        Mat contourframe(frame.size(), CV_8UC3, Scalar(0,0,0));
-        Scalar colors[3];
-        colors[2] = Scalar(255, 0, 0);
-        colors[1] = Scalar(0, 255, 0);
-        colors[0] = Scalar(0, 0, 255);
-
-        for (vector<vector<Point> >::iterator it = contours.begin(); it != contours.end(); )
-        {
-            if (it->size() < 50)
-            {
-                it = contours.erase(it);
-            } else
-            {
-                ++it;
-            }
-        }
-
-        float maxr1 = -1, maxr1i = 0;
-        Point2f point1;
-        float radius1;
-        for (int i = 0; i < contours.size(); i++)
-        {
-            minEnclosingCircle(contours[i], point1, radius1);
-            if (radius1 > maxr1)
-            {
-                maxr1 = radius1;
-                maxr1i = i;
-            }
-        }
-
-        if (contours.size() > 0)
-        {
-            drawContours(source, contours, maxr1i, Scalar(0, 0, 255), 3);
-            minEnclosingCircle(contours[maxr1i], point1, radius1);
-        }
-        if (show_camera_windows)
-        {
-			imshow("Camera1", source);
-        }
-
-        if (opencv_window_key == 'q')
-            h1++;
-        else if (opencv_window_key == 'a')
-            h1--;
-        else if (opencv_window_key == 'w')
-            s1++;
-        else if (opencv_window_key == 's')
-            s1--;
-        else if (opencv_window_key == 'e')
-            v1++;
-        else if (opencv_window_key == 'd')
-            v1--;
-        else if (opencv_window_key == 'r')
-            h2++;
-        else if (opencv_window_key == 'f')
-            h2--;
-        else if (opencv_window_key == 't')
-            s2++;
-        else if (opencv_window_key == 'g')
-            s2--;
-        else if (opencv_window_key == 'y')
-            v2++;
-        else if (opencv_window_key == 'h')
-            v2--;
-
-        //cout << h1 << " " << s1 << " " << v1 << " " << h2 << " " << s2 << " " << v2 << " --- ";
-
-
-        //=============================================================================
-        //      CAMERA 2
-
-        Mat source2 = frame2.clone();
-
-        //colour filter
-        cvtColor(frame2, frame2, COLOR_BGR2HSV);
-        frame2 = colorFilter(frame2);
-
-        //detecting contours
-
-        vector<vector<Point> > contours2;
-        Mat contourOutput2 = frame2.clone();
-        findContours( contourOutput2, contours2, CV_RETR_LIST, CV_CHAIN_APPROX_NONE );
-        Mat contourframe2(frame2.size(), CV_8UC3, Scalar(0,0,0));
-        Scalar colors2[3];
-        colors2[2] = Scalar(255, 0, 0);
-        colors2[1] = Scalar(0, 255, 0);
-        colors2[0] = Scalar(0, 0, 255);
-
-        for (vector<vector<Point> >::iterator it = contours2.begin(); it != contours2.end(); )
-        {
-            if (it->size() < 50)
-                it = contours2.erase(it);
-            else
-                ++it;
-        }
-
-        float maxr2 = -1, maxr2i = 0;
-        Point2f point2;
-        float radius2;
-        for (int i = 0; i < contours2.size(); i++)
-        {
-            minEnclosingCircle(contours2[i], point2, radius2);
-            if (radius2 > maxr2)
-            {
-                maxr2 = radius2;
-                maxr2i = i;
-            }
-        }
-        if (contours2.size() > 0)
-        {
-            drawContours(source2, contours2, maxr2i, Scalar(0, 0, 255), 3);
-            minEnclosingCircle(contours2[maxr2i], point2, radius2);
-        }
-        if (show_camera_windows)
-        {
-			imshow("Camera2", source2);
-        }
-
-
-        //=============================================================================
-        //      IMAGE PROSESSING
-
-        //cout << point1.x << endl << point1.y << endl << point2.x << endl << point2.y << "\n\n\n";
-
-        firstcamx=(point2.x - 400) / 40;
-        secondcamx=(point1.x - 400) / 40;
-        firstcamz=(300 - point1.y) / 40;
-        double kinda23 = 30.8724;
-        if (firstcamx != 0)
-        {
-            a = kinda23 / (firstcamx);
-        }
-        if (secondcamx != 0)
-        {
-            b = kinda23 / (secondcamx);
-        }
-        if (firstcamz != 0)
-        {
-            c = kinda23 / (firstcamz);
-        }
-
-        double x_fill, y_fill, z_fill;
-
-        if (firstcamx != 0 && secondcamx != 0 && firstcamz != 0)
-        {
-            x_fill = (a + b) / (a - b);
-            y_fill = (2 * a * b) / (a - b);
-            z_fill = y_fill / c;
-        }
-        if (firstcamz == 0 && firstcamx != 0 && secondcamx != 0)
-        {
-            x_fill = (a + b) / (a - b);
-            y_fill = (2 * a * b) / (a - b);
-            z_fill = 0;
-        }
-        if (firstcamx == 0 && firstcamz != 0)
-        {
-            x_fill = 1;
-            y_fill = 2 * b;
-            z_fill = y_fill / c;
-        }
-        if (secondcamx == 0 && firstcamz != 0)
-        {
-            x_fill = -1;
-            y_fill = -2 * a;
-            z_fill = y_fill / c;
-        }
-        if (firstcamx == 0 && firstcamz == 0)
-        {
-            x_fill = 1;
-            y_fill = 2 * b;
-            z_fill = 0;
-        }
-        if (secondcamx == 0 && firstcamz == 0)
-        {
-            x_fill = 1;
-            y_fill = -2 * a;
-            z_fill = 0;
-        }
-
-        if (y_fill <= 20 && x_fill <= 20 && z_fill <= 20 && x_fill >= -20 && y_fill >= -20 && contours.size() != 0 && contours2.size() != 0 && y_fill >= 0 && abs(point1.y - point2.y) < 100 && state == 1)
-        {
-			int line_it = x_points.size() - 1;
-			x_points[line_it].push_back(x_fill);
-			y_points[line_it].push_back(y_fill / 3);//HERE!!!!!!!!!!!!
-			z_points[line_it].push_back(z_fill);
-        }
-
-        //cout << x_points.size() << "\n";
-
-
-        printFPS();
-        //cout << x_fill << " " << y_fill << " " << z_fill << " --- " << state << "\n";
-    }
 }
