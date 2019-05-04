@@ -39,7 +39,7 @@ class Detector
 public:
     Detector() : hog()
     {
-        hog.load("detector.yml");
+        hog.load("detector_l.yml");
     }
     vector <pair<Rect, double> > detect(InputArray img)
     {
@@ -104,8 +104,9 @@ int main()
     char key;
 
     cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE);
+    cvNamedWindow("Camera - detect", CV_WINDOW_AUTOSIZE);
 
-    setMouseCallback("Camera", my_mouse_callback);
+    setMouseCallback("Camera - detect", my_mouse_callback);
 
     Detector detector;
 
@@ -144,7 +145,7 @@ int main()
                 {
                     rectangle(tmp, Point(cut_x1 - 2, cut_y1 - 2), Point(cut_x1 + 2, cut_y1 + 2), Scalar(0, 255, 0), FILLED, LINE_8 );
                 }
-                imshow("Camera", tmp);
+                imshow("Camera - detect", tmp);
                 if (key == 's')
                 {
                     break;
@@ -162,13 +163,13 @@ int main()
             tmp = frame(r);
             if (counter < 10)
             {
-                sprintf(filename, "./good/000%d.png", counter);
+                sprintf(filename, "./good_l/000%d.png", counter);
             } else if (counter < 100)
             {
-                sprintf(filename, "./good/00%d.png", counter);
+                sprintf(filename, "./good_l/00%d.png", counter);
             } else if (counter < 1000)
             {
-                sprintf(filename, "./good/0%d.png", counter);
+                sprintf(filename, "./good_l/0%d.png", counter);
             }
             cout << "Saved image -" << counter << "- to: " << filename << "\n";
             imwrite(filename, tmp);

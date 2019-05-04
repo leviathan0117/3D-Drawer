@@ -90,7 +90,7 @@ class Detector
 public:
     Detector() : hog()
     {
-        hog.load("hog/detector.yml");
+        hog.load("hog/detector_l.yml");
     }
     pair<int, int> detect(Mat input_img, Mat output_img, bool draw_detection)
     {

@@ -238,9 +238,21 @@ int main( int argc, char** argv )
     flip_samples = false;
     neg_dir = "/root/3D-Drawer/HAAR/bad_not_my";
     //neg_dir = "/root/3D-Drawer/HAAR/bad";
-    pos_dir = "/root/3D-Drawer/hog/good";
     detector_height = 200;
     detector_width = 200;
+
+    bool left = 1;
+
+    if (left)
+    {
+        obj_det_filename = "detector_l.yml";
+        pos_dir = "/root/3D-Drawer/hog/good_l";
+    } else
+    {
+        obj_det_filename = "detector_r.yml";
+        pos_dir = "/root/3D-Drawer/hog/good_r";
+    }
+
 
     if( pos_dir.empty() || neg_dir.empty() )
     {
