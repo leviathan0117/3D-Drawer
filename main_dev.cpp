@@ -101,7 +101,7 @@ public:
             hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 2, false);
         } else
         {
-            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 10, false);
+            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 15, false);
         }
         double max_value = -1;
 		double max_i = 0;
@@ -334,17 +334,17 @@ void imageProssesing()
     }
 
 
-    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
+    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  600);
     camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
     camera_capture1.set(CAP_PROP_FPS,          60);
 
-    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  800);
+    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  600);
     camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
     camera_capture2.set(CAP_PROP_FPS,          60);
 
-	x_points.resize(1);
-	y_points.resize(1);
-	z_points.resize(1);
+	x_points.resize(1);//TMP!!
+	y_points.resize(1);//TMP!!
+	z_points.resize(1);//TMP!!
 
 
     Detector detector;
@@ -479,8 +479,8 @@ void imageProssesing()
 
         if (point1.x != -1 && point2.x != -1)
         {
-			firstcamx=(point2.x - 400) / 40;
-			secondcamx=(point1.x - 400) / 40;
+			firstcamx=(point2.x - 300) / 40;
+			secondcamx=(point1.x - 300) / 40;
 			firstcamz=(300 - point1.y) / 40;
 			double kinda23 = 30.8724;
 			if (firstcamx != 0)
@@ -535,10 +535,10 @@ void imageProssesing()
 				z_fill = 0;
 			}
 
-			if (y_fill <= 20 && x_fill <= 20 && z_fill <= 20 && x_fill >= -20 && y_fill >= -20 && y_fill >= 0 && abs(point1.y - point2.y) < 100)// && state == 1)
+			if (y_fill <= 60 && x_fill <= 60 && z_fill <= 60 && x_fill >= -60 && y_fill >= -60 && y_fill >= 0 && abs(point1.y - point2.y) < 100)// && state == 1)
 			{
 				x_points[0].push_back(x_fill);
-				y_points[0].push_back(y_fill / 3);//HERE!!!!!!!!!!!!
+				y_points[0].push_back(y_fill / 2);//HERE!!!!!!!!!!!!
 				z_points[0].push_back(z_fill);
 			}
         }
@@ -748,6 +748,9 @@ void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2)
 		x_points.clear();
 		y_points.clear();
 		z_points.clear();
+		x_points.resize(1);//TMP!!
+		y_points.resize(1);//TMP!!
+		z_points.resize(1);//TMP!!
         state = 0;
 	} else if (key == 'l' || key == 'L')
 	{

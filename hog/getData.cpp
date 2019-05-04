@@ -175,6 +175,8 @@ int main()
             counter++;
         }
 
+        imshow("Camera", frame);
+
 
         vector <pair<Rect, double> > found;
 
@@ -219,6 +221,6 @@ int main()
         }
 
 
-        imshow("Camera", frame);
+        imshow("Camera - detect", frame);
     }
 }
