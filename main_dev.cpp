@@ -51,6 +51,7 @@ vector <int> detect_time(10, 0);
 bool state = 0;
 bool detect_active = true;
 bool image_resize_to_cascade = false;
+double image_resize = 0.5;
 
 //===============================================================
 
@@ -92,16 +93,18 @@ public:
     {
         hog.load("hog/detector_l.yml");
     }
-    pair<int, int> detect(Mat input_img, Mat output_img, bool draw_detection)
+    pair<int, int> detect(Mat input_img, Mat &output_img, bool draw_detection)
     {
+        Mat inner_img;
+        resize(input_img, inner_img, cv::Size(), image_resize, image_resize);
         vector<Rect> found;
         vector<double> values;
         if (image_resize_to_cascade)
         {
-            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 2, false);
+            hog.detectMultiScale(inner_img, found, values, 0, Size(8, 8), Size(16, 16), 1.05, 2, false);
         } else
         {
-            hog.detectMultiScale(input_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 15, false);
+            hog.detectMultiScale(inner_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 1, false);
         }
         double max_value = -1;
 		double max_i = 0;
@@ -114,13 +117,15 @@ public:
 			}
 		}
 
+		output_img = inner_img;
+
 		pair <int, int> out (-1, -1);
 
 		if (max_value != -1)
 		{
 			Rect r = found[max_i];
-			out.first = r.x;
-			out.second = r.y;
+			out.first = r.x + r.width / 2;
+			out.second = r.y + r.height / 2;
 			if (draw_detection)
 			{
 				Rect r2 = r;
@@ -225,19 +230,16 @@ int mouse_x = 0, mouse_y = 0;
 
 void mouse_handle( int event_in, int x_in, int y_in, int, void*)
 {
-    if(mouse_state)
-    {
-		mouse_x = x_in;
-		mouse_y = y_in;
-    }
-
-    cout << mouse_x << " " << mouse_y << " --- " << mouse_state << "\n";
     switch(event_in)
     {
     case EVENT_LBUTTONDOWN:
+		mouse_x = x_in;
+		mouse_y = y_in;
 		mouse_state = 1;
         break;
     case EVENT_LBUTTONUP:
+		mouse_x = x_in;
+		mouse_y = y_in;
 		mouse_state = 0;
         break;
     }
@@ -334,12 +336,12 @@ void imageProssesing()
     }
 
 
-    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  600);
-    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  1280);
+    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 720);
     camera_capture1.set(CAP_PROP_FPS,          60);
 
-    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  600);
-    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  1280);
+    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 720);
     camera_capture2.set(CAP_PROP_FPS,          60);
 
 	x_points.resize(1);//TMP!!
@@ -479,9 +481,12 @@ void imageProssesing()
 
         if (point1.x != -1 && point2.x != -1)
         {
-			firstcamx=(point2.x - 300) / 40;
-			secondcamx=(point1.x - 300) / 40;
-			firstcamz=(300 - point1.y) / 40;
+			firstcamx=(point2.x - 1280 / 2) / 40;
+			secondcamx=(point1.x - 1280 / 2) / 40;
+			firstcamz=(720 / 2 - point1.y) / 40;
+			firstcamx=(point2.x - 1280 / 2 * image_resize) / 40;
+			secondcamx=(point1.x - 1280 / 2 * image_resize) / 40;
+			firstcamz=(720 / 2 * image_resize - point1.y) / 40;
 			double kinda23 = 30.8724;
 			if (firstcamx != 0)
 			{
@@ -537,11 +542,12 @@ void imageProssesing()
 
 			if (y_fill <= 60 && x_fill <= 60 && z_fill <= 60 && x_fill >= -60 && y_fill >= -60 && y_fill >= 0 && abs(point1.y - point2.y) < 100)// && state == 1)
 			{
-				x_points[0].push_back(x_fill);
+				x_points[0].push_back(-x_fill);
 				y_points[0].push_back(y_fill / 2);//HERE!!!!!!!!!!!!
 				z_points[0].push_back(z_fill);
 			}
         }
+
 
 
         /*if (y_fill <= 20 && x_fill <= 20 && z_fill <= 20 && x_fill >= -20 && y_fill >= -20 && contours.size() != 0 && contours2.size() != 0 && y_fill >= 0 && abs(point1.y - point2.y) < 100 && state == 1)

@@ -50,7 +50,7 @@ public:
             hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 15, false);
         } else
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 15, false);
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 5, false);
         }
 
         vector <pair<Rect, double> > out;
@@ -82,13 +82,13 @@ char opencv_window_key = 0;
 
 int main()
 {
-    if (capture.open(2) == false)
+    if (capture.open(4) == false)
     {
         exit(EXIT_FAILURE);
     }
 
-    capture.set(CAP_PROP_FRAME_WIDTH,  800);
-    capture.set(CAP_PROP_FRAME_HEIGHT, 600);
+    capture.set(CAP_PROP_FRAME_WIDTH,  1280);
+    capture.set(CAP_PROP_FRAME_HEIGHT, 720);
     capture.set(CAP_PROP_FPS,          60);
 
     Mat frame;
@@ -114,10 +114,13 @@ int main()
     {
         skip:
         key = waitKey(10);
+        //int64 t = getTickCount();
         if (capture.read(frame) == false)
         {
             exit(EXIT_FAILURE);
         }
+        resize(frame, frame, cv::Size(), 0.5, 0.5);
+        //t = getTickCount() - t;
 
         if (key == 27)
         {
@@ -223,5 +226,7 @@ int main()
 
 
         imshow("Camera - detect", frame);
+        cout << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t) << "\n";
+
     }
 }

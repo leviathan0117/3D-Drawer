@@ -49,7 +49,7 @@ int show_camera_windows = 1;
 int it = 0;
 vector <int> detect_time(10, 0);
 bool state = 0;
-bool detect_active = true;
+bool detect_active = false;
 bool image_resize_to_cascade = false;
 
 //===============================================================
@@ -324,7 +324,7 @@ void imageProssesing()
 	VideoCapture camera_capture2;
 	Mat frame1;
 	Mat frame2;
-    if (camera_capture1.open(2) == false)
+    if (camera_capture1.open(0) == false)
     {
         exit(EXIT_FAILURE);
     }
@@ -334,12 +334,12 @@ void imageProssesing()
     }
 
 
-    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  800);
-    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture1.set(CAP_PROP_FRAME_WIDTH,  1280);
+    camera_capture1.set(CAP_PROP_FRAME_HEIGHT, 720);
     camera_capture1.set(CAP_PROP_FPS,          60);
 
-    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  800);
-    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 600);
+    camera_capture2.set(CAP_PROP_FRAME_WIDTH,  1280);
+    camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 720);
     camera_capture2.set(CAP_PROP_FPS,          60);
 
 
@@ -545,9 +545,9 @@ void imageProssesing()
 
         //cout << point1.x << endl << point1.y << endl << point2.x << endl << point2.y << "\n\n\n";
 
-        firstcamx=(point2.x - 400) / 40;
-        secondcamx=(point1.x - 400) / 40;
-        firstcamz=(300 - point1.y) / 40;
+        firstcamx=(point2.x - 1280 / 2) / 40;
+        secondcamx=(point1.x - 1280 / 2) / 40;
+        firstcamz=(720 / 2 - point1.y) / 40;
         double kinda23 = 30.8724;
         if (firstcamx != 0)
         {
