@@ -50,7 +50,7 @@ public:
             hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.05, 15, false);
         } else
         {
-            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 3, false);
+            hog.detectMultiScale(img, found, values, 0, Size(8, 8), Size(32, 32), 1.00, 1, false);
         }
 
         vector <pair<Rect, double> > out;
