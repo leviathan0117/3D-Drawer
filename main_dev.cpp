@@ -348,12 +348,13 @@ void imageProssesing()
 	y_points.resize(1);//TMP!!
 	z_points.resize(1);//TMP!!
 
+	int lock_detect_time = 0;
+
 
     Detector detector;
 	waitKey(100);
     while (true)
     {
-        //printFPS();
         opencv_window_key = waitKey(1);
         //=============================================================================
         //      CAMERA 1
@@ -366,10 +367,6 @@ void imageProssesing()
         {
             exit(EXIT_FAILURE);
         }
-        /*if (camera_capture1.read(frame1) == false)
-        {
-            exit(EXIT_FAILURE);
-        }*/
 
         Point2f point1;
         if (detect_active)
@@ -380,14 +377,6 @@ void imageProssesing()
 			int64 t = getTickCount();
 			detection_cords = detector.detect(frame1, detect_frame, true);
 			t = getTickCount() - t;
-
-			/*if (detection_cords.first != -1)
-			{
-				detect_time[it] = 1;
-			} else
-			{
-				detect_time[it] = 0;
-			}*/
 
 			// show the window
 			{
@@ -401,23 +390,10 @@ void imageProssesing()
 				imshow("camera_capture1 - detection", detect_frame);
 			}
 
-			it++;
-			it %= 10;
 			point1.x = detection_cords.first;
 			point1.y = detection_cords.second;
         }
 
-		/*if (accumulate(detect_time.begin(), detect_time.end(), 0ll) > 8)
-		{
-			state = !state;
-			if (state)
-			{
-				x_points.push_back(vector <double> ());
-				y_points.push_back(vector <double> ());
-				z_points.push_back(vector <double> ());
-			}
-			fill(detect_time.begin(), detect_time.end(), 0);
-		}*/
 
         if (opencv_window_key == 'q')
             h1++;
@@ -542,21 +518,37 @@ void imageProssesing()
 
 			if (y_fill <= 60 && x_fill <= 60 && z_fill <= 60 && x_fill >= -60 && y_fill >= -60 && y_fill >= 0 && abs(point1.y - point2.y) < 100)// && state == 1)
 			{
-				x_points[0].push_back(-x_fill);
-				y_points[0].push_back(y_fill / 2);//HERE!!!!!!!!!!!!
-				z_points[0].push_back(z_fill);
+				int line_it = x_points.size() - 1;
+				x_points[line_it].push_back(-x_fill);
+				y_points[line_it].push_back(y_fill / 2);//HERE!!!!!!!!!!!!
+				z_points[line_it].push_back(z_fill);
+				detect_time[it] = 1;
+			} else
+			{
+				detect_time[it] = 0;
 			}
-        }
+        } else
+		{
+			detect_time[it] = 0;
+		}
+
+		it++;
+		it %= 10;
 
 
+		if (accumulate(detect_time.begin(), detect_time.end(), 0ll) > 8)
+		{
+			lock_detect_time = 1;
+		}
 
-        /*if (y_fill <= 20 && x_fill <= 20 && z_fill <= 20 && x_fill >= -20 && y_fill >= -20 && contours.size() != 0 && contours2.size() != 0 && y_fill >= 0 && abs(point1.y - point2.y) < 100 && state == 1)
-        {
-			int line_it = x_points.size() - 1;
-			x_points[line_it].push_back(x_fill);
-			y_points[line_it].push_back(y_fill / 3);//HERE!!!!!!!!!!!!
-			z_points[line_it].push_back(z_fill);
-        }*/
+		if (lock_detect_time && accumulate(detect_time.begin(), detect_time.end(), 0ll) < 5)
+		{
+			x_points.push_back(vector <double> ());
+			y_points.push_back(vector <double> ());
+			z_points.push_back(vector <double> ());
+			fill(detect_time.begin(), detect_time.end(), 0);
+			lock_detect_time = 0;
+		}
 
         printFPS();
     }
