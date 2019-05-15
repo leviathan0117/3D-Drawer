@@ -80,6 +80,7 @@ void drawLine(double x1_pos, double y1_pos, double z1_pos, double x2_pos, double
 void printFPS();
 double calIndent (vector <vector <double> > arr, int arr_size);
 void renderScene();
+void save_file();
 void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2);
 void mouseMove(int mouse_x_now, int mouse_y_now);
 void mouseButton(int button, int state, int mouse_x_now, int mouse_y_now);
@@ -104,7 +105,7 @@ public:
             hog.detectMultiScale(inner_img, found, values, 0, Size(8, 8), Size(16, 16), 1.05, 2, false);
         } else
         {
-            hog.detectMultiScale(inner_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 1, false);
+            hog.detectMultiScale(inner_img, found, values, 0, Size(8, 8), Size(16, 16), 1.00, 2, false);
         }
         double max_value = -1;
 		double max_i = 0;
@@ -245,6 +246,7 @@ void mouse_handle( int event_in, int x_in, int y_in, int, void*)
     }
 }
 
+string filename;
 
 int main(int argc, char **argv)
 {
@@ -268,6 +270,8 @@ int main(int argc, char **argv)
     namedWindow(wndname);
     setMouseCallback(wndname, mouse_handle);
 
+    int new_file = 0;
+
     while (key != 27)
     {
 		b1.draw(image);
@@ -275,12 +279,20 @@ int main(int argc, char **argv)
 
         if (b1.is_pressed(mouse_x, mouse_y) && mouse_state)
         {
+			new_file = 1;
+			break;
+        }
+        if (b2.is_pressed(mouse_x, mouse_y) && mouse_state)
+        {
+			new_file = 0;
 			break;
         }
 
         imshow(wndname, image);
 		key = waitKey(DELAY);
     }
+
+
     if (key == 27)
     {
 		exit(0);
@@ -288,6 +300,41 @@ int main(int argc, char **argv)
     waitKey(100);
     destroyAllWindows();
 
+    cout << "Enter filename:";
+	cin >> filename;
+
+    if (new_file == 0)
+    {
+		in.open("files/" + filename + ".3dd", ios::in);
+
+		int number_of_lines;
+		in >> number_of_lines;
+		for (int i = 0; i < number_of_lines; i++)
+		{
+			int number_of_points;
+			in >> number_of_points;
+			x_points.push_back(vector <double> ());
+			y_points.push_back(vector <double> ());
+			z_points.push_back(vector <double> ());
+
+			int total_lines_now = x_points.size();
+
+			for (int j = 0; j < number_of_points; j++)
+			{
+				double x_tmp, y_tmp, z_tmp;
+				in >> x_tmp >> y_tmp >> z_tmp;
+				x_points[total_lines_now - 1].push_back(x_tmp);
+				y_points[total_lines_now - 1].push_back(y_tmp);
+				z_points[total_lines_now - 1].push_back(z_tmp);
+			}
+		}
+
+		in.close();
+    }
+
+    x_points.push_back(vector <double> ());
+	y_points.push_back(vector <double> ());
+	z_points.push_back(vector <double> ());
 	//TMP!!!!!!!!
 
 	//Get GLUT ready
@@ -326,11 +373,11 @@ void imageProssesing()
 	VideoCapture camera_capture2;
 	Mat frame1;
 	Mat frame2;
-    if (camera_capture1.open(2) == false)
+    if (camera_capture1.open(4) == false)
     {
         exit(EXIT_FAILURE);
     }
-    if (camera_capture2.open(4) == false)
+    if (camera_capture2.open(2) == false)
     {
         exit(EXIT_FAILURE);
     }
@@ -343,10 +390,6 @@ void imageProssesing()
     camera_capture2.set(CAP_PROP_FRAME_WIDTH,  1280);
     camera_capture2.set(CAP_PROP_FRAME_HEIGHT, 720);
     camera_capture2.set(CAP_PROP_FPS,          60);
-
-	x_points.resize(1);//TMP!!
-	y_points.resize(1);//TMP!!
-	z_points.resize(1);//TMP!!
 
 	int lock_detect_time = 0;
 
@@ -520,7 +563,7 @@ void imageProssesing()
 			{
 				int line_it = x_points.size() - 1;
 				x_points[line_it].push_back(-x_fill);
-				y_points[line_it].push_back(y_fill / 2);//HERE!!!!!!!!!!!!
+				y_points[line_it].push_back(y_fill / 6);//HERE!!!!!!!!!!!!
 				z_points[line_it].push_back(z_fill);
 				detect_time[it] = 1;
 			} else
@@ -671,10 +714,7 @@ void renderScene()
 		drawSphere(0, 0, -i, 0.05, 10, 0, 0, 50);
 	}
 
-	if (state)
-	{
-		drawSphere(0, 0, 0, 0.1, 10, 0, 255, 255);
-	}
+	drawSphere(0, 0, 0, 0.1, 10, 0, 255, 255);
 
 	//MAYBE MAKE BOURDERS
 	/*drawLine(0, 0, MAX_Y / 2 - calIndent(y_points, size), 0, 0, MIN_Y - calIndent(y_points, size), 0, 0, 100);
@@ -730,6 +770,30 @@ void renderScene()
 	glutSwapBuffers();
 }
 
+void save_file()
+{
+	out.open("files/" + filename + ".3dd", ios::out);
+
+	int number_of_lines = x_points.size();
+	out << number_of_lines << "\n";
+	for (int i = 0; i < number_of_lines; i++)
+	{
+		int number_of_points = x_points[i].size();
+		out << number_of_points << "\n";
+
+		for (int j = 0; j < number_of_points; j++)
+		{
+			double x_tmp = x_points[i][j];
+			double y_tmp = y_points[i][j];
+			double z_tmp = z_points[i][j];
+
+			out << x_tmp << " " << y_tmp << " " << z_tmp << "\n";
+		}
+		out << "\n";
+	}
+	out.close();
+}
+
 void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2)
 {
     if (key == 27)
@@ -746,10 +810,6 @@ void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2)
 		x_points.clear();
 		y_points.clear();
 		z_points.clear();
-		x_points.resize(1);//TMP!!
-		y_points.resize(1);//TMP!!
-		z_points.resize(1);//TMP!!
-        state = 0;
 	} else if (key == 'l' || key == 'L')
 	{
 		draw_lines = !draw_lines;
@@ -759,6 +819,9 @@ void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2)
 		{
 			detect_time[i] = 1;
 		}
+	} else if (key == 's')
+	{
+		save_file();
 	} else
 	{
 		angle_speed = 0;
