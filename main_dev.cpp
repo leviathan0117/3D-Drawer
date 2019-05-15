@@ -335,7 +335,6 @@ int main(int argc, char **argv)
     x_points.push_back(vector <double> ());
 	y_points.push_back(vector <double> ());
 	z_points.push_back(vector <double> ());
-	//TMP!!!!!!!!
 
 	//Get GLUT ready
 	glutInit(&argc, argv);
@@ -563,7 +562,7 @@ void imageProssesing()
 			{
 				int line_it = x_points.size() - 1;
 				x_points[line_it].push_back(-x_fill);
-				y_points[line_it].push_back(y_fill / 6);//HERE!!!!!!!!!!!!
+				y_points[line_it].push_back(y_fill / 4);//HERE!!!!!!!!!!!!
 				z_points[line_it].push_back(z_fill);
 				detect_time[it] = 1;
 			} else
@@ -810,6 +809,9 @@ void pressKey(unsigned char key, int unkown_param_1, int unkown_param_2)
 		x_points.clear();
 		y_points.clear();
 		z_points.clear();
+		x_points.push_back(vector <double> ());
+		y_points.push_back(vector <double> ());
+			z_points.push_back(vector <double> ());
 	} else if (key == 'l' || key == 'L')
 	{
 		draw_lines = !draw_lines;
