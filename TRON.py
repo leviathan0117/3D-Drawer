@@ -203,9 +203,6 @@ def keyboardFunction (*args):
         keyState[' '] = 1
 
 def keyboardUpFunction (*args):
-    if args [0] == b'\x1b':
-        sys.exit ()
-
     global keyState
 
     if args [0] == b'a':
@@ -303,9 +300,9 @@ def processCamera ():
         lx = -math.cos(cameraAngle1) * math.cos(cameraAngle2)
         ly = math.sin(cameraAngle2)
         lz = math.sin(cameraAngle1) * math.cos(cameraAngle2)
-        cameraPosX = cameraLookAtX + lx * 10
-        cameraPosY = cameraLookAtY + ly * 10
-        cameraPosZ = cameraLookAtZ + lz * 10
+        cameraPosX = cameraLookAtX + lx * 4
+        cameraPosY = cameraLookAtY + ly * 4
+        cameraPosZ = cameraLookAtZ + lz * 4
     
     if cameraMode != 0:
         gluLookAt (cameraPosX, cameraPosY, cameraPosZ,

@@ -5,8 +5,19 @@ import imutils
 import TRON
 import sys
 
+current_file_version
+
+print("Do you wish to open a file? (y to open)")
+work_style = input()
+if work_style == "y":
+	print("Enter file name to open")
+else:
+	print("Creating a new file")
+	print("Enter file name")
+file_name = input()
+
 hog = cv2.HOGDescriptor()
-hog.load("hog/detector_l.yml")
+hog.load("detector/hog/detector_l.yml")
 cap1 = cv2.VideoCapture(0)
 #print(cap1.get(cv2.CAP_PROP_FRAME_WIDTH), cap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
 cap2 = cv2.VideoCapture(2)
@@ -26,6 +37,17 @@ z_fill = 0
 
 #cv2.namedWindow("Camera 1:", cv2.WINDOW_AUTOSIZE )
 
+points_x = [];
+points_y = [];
+points_z = [];
+
+def get_array_average(array):
+	if len(array) == 0:
+		return 0
+	sum = 0
+	for i in array:
+		sum += i
+	return sum / len(array)
 
 def display():
 	global cap1, cap2
@@ -33,6 +55,7 @@ def display():
 	global hasFrame2, frame2
 	global start_time, interval, counter
 	global x_fill, y_fill, z_fill
+	global points_x, points_y, points_z
 
 	hasFrame1, frame1 = cap1.read()
 	if not hasFrame1:
@@ -109,7 +132,13 @@ def display():
 			y_fill = -2 * a
 			z_fill = 0
 
-		print(x_fill, y_fill, z_fill)
+		#normalize coordinates
+		x_fill *= 2
+		z_fill *= -2
+
+		points_x.append(x_fill)
+		points_y.append(y_fill)
+		points_z.append(z_fill)
 
 	counter += 1
 	if (time.time() - start_time) > interval:
@@ -117,7 +146,20 @@ def display():
 		counter = 0
 		start_time = time.time()
 
-	TRON.drawSphere(y_fill / 2, -z_fill * 2, x_fill * 2, 0.1, 20)
+	if TRON.keyState['r'] == 1:
+		points_x = []
+		points_y = []
+		points_z = []
+	if TRON.keyState['i'] == 1:
+		f = open(file_name+".3dd", 'w')
+		f.write("File version:\n")
+		f.write("2\n")
+		f.write("DATA\n")
+		f.close()
+
+	for i in range(len(points_x)):
+		TRON.drawSphere(points_y[i] - get_array_average(points_y), points_z[i], points_x[i], 0.1, 20)
+
 	TRON.setColorRGB(0, 0, 1)
 	TRON.drawLine(0, 0, 0, 100, 0, 0)
 	TRON.setColorRGB(0, 1, 0)
