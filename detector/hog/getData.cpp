@@ -93,6 +93,9 @@ int main()
 
     Mat frame;
 
+    string foulder_name;
+    cout << "Please enter foulder name:";
+    cin >> foulder_name;
     int counter = -1;
     cout << "Please enter start num for HOG images:";
     cin >> counter;
@@ -103,7 +106,7 @@ int main()
 
     char key;
 
-    cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE);
+    //cvNamedWindow("Camera", CV_WINDOW_AUTOSIZE);
     cvNamedWindow("Camera - detect", CV_WINDOW_AUTOSIZE);
 
     setMouseCallback("Camera - detect", my_mouse_callback);
@@ -166,20 +169,20 @@ int main()
             tmp = frame(r);
             if (counter < 10)
             {
-                sprintf(filename, "./good_l/000%d.png", counter);
+                sprintf(filename, "./%s/000%d.png", foulder_name.c_str(), counter);
             } else if (counter < 100)
             {
-                sprintf(filename, "./good_l/00%d.png", counter);
+                sprintf(filename, "./%s/00%d.png", foulder_name.c_str(), counter);
             } else if (counter < 1000)
             {
-                sprintf(filename, "./good_l/0%d.png", counter);
+                sprintf(filename, "./%s/0%d.png", foulder_name.c_str(), counter);
             }
-            cout << "Saved image -" << counter << "- to: " << filename << "\n";
+            cout << "Saved image -" << counter << "- to: " << filename<< "\n";
             imwrite(filename, tmp);
             counter++;
         }
 
-        imshow("Camera", frame);
+        //imshow("Camera", frame);
 
 
         vector <pair<Rect, double> > found;
@@ -226,7 +229,7 @@ int main()
 
 
         imshow("Camera - detect", frame);
-        cout << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t) << "\n";
+        //cout << "FPS: " << fixed << setprecision(2) << (getTickFrequency() / (double)t) << "\n";
 
     }
 }

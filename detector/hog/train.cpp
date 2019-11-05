@@ -60,7 +60,7 @@ void convert_to_ml( const vector< Mat > & train_samples, Mat& trainData )
     }
 }
 
-void do_stuff_for_neg( const String & dirname, Size size, vector< Mat > & gradient_lst, bool use_flip )
+void do_stuff_for_neg( const String & dirname, Size size, vector< Mat > & gradient_lst, bool use_flip, int num_samples)
 {
     vector< String > files;
     glob( dirname, files );
@@ -85,23 +85,17 @@ void do_stuff_for_neg( const String & dirname, Size size, vector< Mat > & gradie
 
     cout << "\n";
 
-    for ( size_t i = 0; i < files.size(); ++i )
+    for ( size_t i = 0; i < files.size() && i < num_samples; ++i )
     {
         if (i % 100 == 0)
         {
-            cout << i << " out of " << files.size() << "\n";
+            cout << i << " out of " << min(int(files.size()), num_samples) << "\n";
         }
         Mat img = imread( files[i] ); // load the image
         if ( img.empty() )            // invalid image, skip it.
         {
             cout << files[i] << " is invalid!" << endl;
             continue;
-        }
-
-        if ( false )
-        {
-            imshow( "image", img );
-            waitKey( 1 );
         }
 
         //=======================
@@ -200,7 +194,7 @@ void computeHOGs( const Size wsize, const vector< Mat > & img_lst, vector< Mat >
 
 int main( int argc, char** argv )
 {
-    const char* keys =
+    /*const char* keys =
     {
         "{help h|     | show help message}"
         "{pd    |     | path of directory contains positive images}"
@@ -222,52 +216,28 @@ int main( int argc, char** argv )
     {
         parser.printMessage();
         exit( 0 );
-    }
+    }*/
 
-    String pos_dir = parser.get< String >( "pd" );
-    String neg_dir = parser.get< String >( "nd" );
-    String test_dir = parser.get< String >( "td" );
-    String obj_det_filename = parser.get< String >( "fn" );
-    String videofilename = parser.get< String >( "tv" );
-    int detector_width = parser.get< int >( "dw" );
-    int detector_height = parser.get< int >( "dh" );
-    bool test_detector = parser.get< bool >( "t" );
-    bool train_twice = parser.get< bool >( "d" );
-    bool visualization = parser.get< bool >( "v" );
-    bool flip_samples = parser.get< bool >( "f" );
-    flip_samples = false;
-    neg_dir = "/root/3D-Drawer/HAAR/bad_not_my";
-    //neg_dir = "/root/3D-Drawer/HAAR/bad";
+    String pos_dir, neg_dir, obj_det_filename;
+    int detector_width = 200;
+    int detector_height = 200;
+    bool flip_samples = false;
+    neg_dir = "../HAAR/bad_not_my";
     detector_height = 200;
     detector_width = 200;
 
-    bool left = 1;
-
-    if (left)
-    {
-        obj_det_filename = "detector_l.yml";
-        pos_dir = "/root/3D-Drawer/hog/good_l";
-    } else
-    {
-        obj_det_filename = "detector_r.yml";
-        pos_dir = "/root/3D-Drawer/hog/good_r";
-    }
-
-
-    if( pos_dir.empty() || neg_dir.empty() )
-    {
-        parser.printMessage();
-        cout << "Wrong number of parameters.\n\n"
-             << "Example command line:\n" << argv[0] << " -dw=64 -dh=128 -pd=/INRIAPerson/96X160H96/Train/pos -nd=/INRIAPerson/neg -td=/INRIAPerson/Test/pos -fn=HOGpedestrian64x128.xml -d\n"
-             << "\nExample command line for testing trained detector:\n" << argv[0] << " -t -fn=HOGpedestrian64x128.xml -td=/INRIAPerson/Test/pos";
-        exit( 1 );
-    }
+    obj_det_filename = "detector_l.yml";
+    cout << "Enter positive sample foulder: ";
+    cin >> pos_dir;
+    int num_samples = 0;
+    cout << "Enter num of negative samples: ";
+    cin >> num_samples;
 
     vector< Mat > pos_lst, full_neg_lst, neg_lst, gradient_lst;
     vector< int > labels;
 
     clog << "Positive images are being loaded..." ;
-    load_images( pos_dir, pos_lst, visualization );
+    load_images( pos_dir, pos_lst, false );
     if ( pos_lst.size() > 0 )
     {
         clog << "...[done]" << endl;
@@ -304,19 +274,11 @@ int main( int argc, char** argv )
     clog << "\n...[done] ( positive count : " << positive_count << " )" << endl;
 
     clog << "Negative images loading && Histogram of Gradients calculation...";
-    do_stuff_for_neg(neg_dir, pos_image_size, gradient_lst, flip_samples);
+    do_stuff_for_neg(neg_dir, pos_image_size, gradient_lst, flip_samples, num_samples);
     size_t negative_count = gradient_lst.size() - positive_count;
     labels.insert( labels.end(), negative_count, -1 );
     CV_Assert( positive_count < labels.size() );
-    clog << "\n...[done] ( negative count : ";
-    if (flip_samples)
-    {
-        clog << negative_count / 2 << " * 2 = " << negative_count;
-    } else
-    {
-        clog << negative_count;
-    }
-    clog << " )" << endl;
+    clog << "\n...[done] ( negative count : " << negative_count << " )" << endl;
 
     Mat train_data;
     convert_to_ml( gradient_lst, train_data );
